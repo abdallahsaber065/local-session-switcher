@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install
+
+      - name: Verify tag matches package.json (manifest version)
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${VERSION}. Bump package.json, commit, then re-tag."
+            exit 1
+          fi
+
+      - name: Type-check
+        run: pnpm compile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build extension
+        run: pnpm build
+
+      - name: Zip extension
+        run: pnpm zip
+
+      - name: Publish GitHub Release with zip attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --title "Local Session Switcher $GITHUB_REF_NAME" \
+            ".output/*.zip"

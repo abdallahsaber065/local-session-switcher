@@ -3,11 +3,33 @@
 [![CI](https://github.com/abdallahsaber065/local-session-switcher/actions/workflows/ci.yml/badge.svg)](https://github.com/abdallahsaber065/local-session-switcher/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Chrome MV3 extension that swaps test-user sessions (cookies + localStorage/sessionStorage) on local projects.
+**Testing your app with different users and permissions shouldn't mean juggling incognito
+windows, signing out and back in, or copying cookies by hand.**
+
+Local Session Switcher gives every project a persistent list of test users — admin, employee,
+customer, whatever your roles are — and swapping the whole session is one click: tokens and
+cookies are written (a fresh login and token refresh happen for you), leftovers are pruned, and
+the tabs reload. One window, one tab, zero sign-out dance.
 
 ![Popup — ledger of test users with live session states](docs/popup.png)
 
-## Why
+## Features
+
+- **Project-scoped user lists** — the project is picked manually and persisted, never inferred from the URL, because every local app shares `localhost`.
+- **One-click session swap** — cookies + `localStorage`/`sessionStorage` written, stale auth pruned, tabs reloaded.
+- **Auth recipes** — declarative login → reuse → refresh with CSRF preflights; presets for session cookies, NextAuth, Laravel Sanctum, Django, and JWT + refresh.
+- **Capture or seed** — grab a live session in one click, or import a JSON seed file (standalone validator included).
+- **Test-user awareness** — role tags, JWT expiry countdown, and detection of which user is active right now.
+- **Keyboard-first** — <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd>/<kbd>Y</kbd> to cycle users, right-click menu, side panel, badge with initials.
+- **Local-only** — no analytics, no servers; everything lives in `chrome.storage.local`, and recipe URLs are origin-guarded to your own project.
+
+## Install
+
+Grab the latest **Release** zip, unzip it, then `chrome://extensions` → Developer mode →
+**Load unpacked** → pick the unzipped folder. From source: `pnpm install && pnpm build`, then
+load `.output/chrome-mv3`.
+
+## How it works
 
 Local projects usually share the same origin (`http://localhost:3000`), so they share cookies and storage. This extension keeps named user profiles per project and swaps the whole session in one click:
 
@@ -106,7 +128,7 @@ Everything is editable as JSON (Settings → Raw JSON per project, or backup/see
 
 Seed import merges: projects by `id`/`name`, users by `id`/`name` (seed wins); missing user ids are generated and missing fields get defaults.
 
-## How a switch works
+## Under the hood
 
 1. Read current cookies for each project host.
 2. Plan (pure function in `lib/planner.ts`): cookies to set, cookies to remove (clear scope minus the new session), storage writes + prune rules.
@@ -116,7 +138,7 @@ The session always transitions A → B; it is never fully cleared in between, so
 
 ## Permissions
 
-`storage`, `cookies`, `contextMenus`, `sidePanel` + host permissions for `localhost` / `127.0.0.1` (http and https). No network requests — everything stays in `chrome.storage.local`.
+`storage`, `cookies`, `contextMenus`, `sidePanel` + host permissions for `localhost` / `127.0.0.1` (http and https). The extension itself phones home to nothing: the only network requests it ever makes are the login/refresh URLs you configure in an auth recipe, and those are guarded to the project's own origins. Everything it stores stays in `chrome.storage.local`.
 
 ## Contributing
 
