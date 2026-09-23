@@ -26,8 +26,9 @@ the tabs reload. One window, one tab, zero sign-out dance.
 ## Install
 
 Grab the latest **Release** zip, unzip it, then `chrome://extensions` → Developer mode →
-**Load unpacked** → pick the unzipped folder. From source: `pnpm install && pnpm build`, then
-load `.output/chrome-mv3`.
+**Load unpacked** → pick the unzipped folder.
+
+OR From source: `pnpm install && pnpm build`, then load `.output/chrome-mv3`.
 
 ## How it works
 
