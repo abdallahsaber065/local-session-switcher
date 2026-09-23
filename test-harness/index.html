@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Session Switcher — Test Harness</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      h1 {
+        font-size: 1.2rem;
+      }
+      p {
+        color: #94a3b8;
+        font-size: 0.85rem;
+      }
+      button {
+        margin: 0.25rem;
+        padding: 0.5rem 0.9rem;
+        border-radius: 6px;
+        border: 1px solid #334155;
+        background: #1e293b;
+        color: #e2e8f0;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: #64748b;
+      }
+      pre {
+        background: #1e293b;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Session Switcher — Test Harness</h1>
+    <p>
+      A fake login page: click a user, then use the extension ("Capture current tab as user") to record the session.
+      Switch users from the popup and confirm cookies + localStorage/sessionStorage change and the page reloads.
+    </p>
+    <div id="buttons"></div>
+    <h1>Auth API (for recipes)</h1>
+    <p>
+      POST <code>/api/auth/login</code> with <code>{ "email", "password" }</code> — alice@test.local / alice,
+      bob@test.local / bob. JWTs expire after 45 seconds and <code>/api/auth/refresh</code> renews them, so the
+      extension's reuse → refresh → login lifecycle is testable. <code>GET /api/auth/csrf</code> serves a CSRF token;
+      <code>GET /api/auth/me</code> reports 200/401 for the cookie session.
+    </p>
+    <div id="api-buttons"></div>
+
+    <h1>Current session</h1>
+    <pre id="state"></pre>
+    <script>
+      const users = ['Alice Admin', 'Bob Employee', 'Carol Customer'];
+
+      function fakeJwt(name) {
+        const encode = (obj) =>
+          btoa(JSON.stringify(obj)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+        const payload = encode({ sub: name, role: name.split(' ')[1] ?? 'user', exp: Math.floor(Date.now() / 1000) + 3600 });
+        return 'eyJhbGciOiJIUzI1NiJ9.' + payload + '.harness-signature';
+      }
+
+      function loginAs(name) {
+        document.cookie = 'harness-session=' + encodeURIComponent(name) + '; path=/';
+        document.cookie = 'harness-token=' + fakeJwt(name) + '; path=/';
+        localStorage.setItem('harness-token', fakeJwt(name));
+        localStorage.setItem('harness-user', JSON.stringify({ name, role: name.split(' ')[1] ?? 'user' }));
+        localStorage.setItem('harness-theme', 'dark');
+        sessionStorage.setItem('harness-csrf', Math.random().toString(36).slice(2));
+        render();
+      }
+
+      function logout() {
+        for (const part of document.cookie.split(';')) {
+          const name = part.split('=')[0].trim();
+          if (name) document.cookie = name + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        render();
+      }
+
+      function render() {
+        document.getElementById('state').textContent = JSON.stringify(
+          {
+            cookies: document.cookie,
+            localStorage: Object.fromEntries(Object.entries(localStorage)),
+            sessionStorage: Object.fromEntries(Object.entries(sessionStorage)),
+          },
+          null,
+          2,
+        );
+      }
+
+      async function apiLogin(email, password) {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || String(response.status));
+        localStorage.setItem('harness-token', data.token);
+        localStorage.setItem('harness-refresh', data.refreshToken);
+        localStorage.setItem('harness-user', JSON.stringify(data.user));
+        render();
+      }
+
+      const apiButtons = document.getElementById('api-buttons');
+      for (const email of ['alice@test.local', 'bob@test.local']) {
+        const button = document.createElement('button');
+        button.textContent = 'API login ' + email;
+        button.onclick = () => apiLogin(email, email.split('@')[0]).catch((error) => alert(error.message));
+        apiButtons.appendChild(button);
+      }
+
+      const buttons = document.getElementById('buttons');
+      for (const user of users) {
+        const button = document.createElement('button');
+        button.textContent = 'Log in as ' + user;
+        button.onclick = () => loginAs(user);
+        buttons.appendChild(button);
+      }
+      const logoutButton = document.createElement('button');
+      logoutButton.textContent = 'Log out';
+      logoutButton.onclick = logout;
+      buttons.appendChild(logoutButton);
+
+      render();
+    </script>
+  </body>
+</html>

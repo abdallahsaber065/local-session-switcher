@@ -1,0 +1,114 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Night ledger: green-black ruled stock under a desk lamp */
+  --color-desk: #0a0d0b;
+  --color-sheet: #10140f;
+  --color-sheet2: #171c15;
+  --color-rule: #242b22;
+  --color-rule2: #333c30;
+  --color-ink: #efebdd;
+  --color-inkdim: #a9a99a;
+  --color-inkfaint: #82866f;
+  --color-stamp: #c0413a;
+  --color-stampdim: #6f2a26;
+  --color-inkblue: #6e9bea;
+  --color-inkgreen: #55b183;
+  --color-inkamber: #d9a441;
+  --color-brass: #c9a227;
+  --font-sans: ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-desk);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ledger ruling: a hairline every 28px, barely there. */
+.ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 27px,
+    color-mix(in srgb, var(--color-ink) 4.5%, transparent) 27px 28px
+  );
+}
+
+/* Tabular numerals for every figure the ledger counts. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rubber-stamp impression: ring + inner ring, slightly rotated by the caller. */
+.stamp-impression {
+  border: 1px solid currentColor;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 16%, transparent);
+}
+
+/* The one authored motion: a stamp press. */
+@keyframes stamp-press {
+  0% {
+    transform: scale(1.05) rotate(-2deg);
+    opacity: 0.35;
+  }
+  60% {
+    transform: scale(0.98) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(-2deg);
+    opacity: 1;
+  }
+}
+.stamp-press {
+  animation: stamp-press 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes ink-bloom {
+  0% {
+    box-shadow: inset 0 0 0 0 color-mix(in srgb, var(--color-stamp) 45%, transparent);
+  }
+  100% {
+    box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--color-stamp) 0%, transparent);
+  }
+}
+.ink-bloom {
+  animation: ink-bloom 260ms ease-out;
+}
+
+:focus-visible {
+  outline: 1px solid var(--color-brass);
+  outline-offset: 1px;
+}
+
+/* Native selects: the OS-rendered dropdown list ignores page colors unless the
+   palette is forced onto the control itself. */
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background-color: var(--color-sheet2);
+  color: var(--color-ink);
+}
+
+/* Ledger scrollbars: thin rules, no chrome. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule2) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
