@@ -16,6 +16,18 @@
       h1 {
         font-size: 1.2rem;
       }
+      #who {
+        font-size: 1.75rem;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+        margin: 0.75rem 0 1rem;
+        color: #efebdd;
+      }
+      #who.out {
+        color: #94a3b8;
+        font-weight: 500;
+        font-size: 1.1rem;
+      }
       p {
         color: #94a3b8;
         font-size: 0.85rem;
@@ -47,6 +59,7 @@
       A fake login page: click a user, then use the extension ("Capture current tab as user") to record the session.
       Switch users from the popup and confirm cookies + localStorage/sessionStorage change and the page reloads.
     </p>
+    <div id="who" aria-live="polite">Signed out</div>
     <div id="buttons"></div>
     <h1>Auth API (for recipes)</h1>
     <p>
@@ -99,6 +112,25 @@
           null,
           2,
         );
+        const who = document.getElementById('who');
+        let name = '';
+        try {
+          const raw = localStorage.getItem('harness-user');
+          if (raw) name = JSON.parse(raw).name || '';
+        } catch {
+          name = '';
+        }
+        if (!name) {
+          const match = /harness-session=([^;]+)/.exec(document.cookie);
+          if (match) name = decodeURIComponent(match[1]);
+        }
+        if (name) {
+          who.textContent = 'Signed in as ' + name;
+          who.className = '';
+        } else {
+          who.textContent = 'Signed out';
+          who.className = 'out';
+        }
       }
 
       async function apiLogin(email, password) {

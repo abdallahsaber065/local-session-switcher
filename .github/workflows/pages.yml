@@ -1,0 +1,44 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site/assets
+          cp -a site/. _site/
+          cp public/icon/128.png _site/assets/icon.png
+          cp docs/assets/popup.png _site/assets/popup.png 2>/dev/null || cp docs/popup.png _site/assets/popup.png
+          cp docs/assets/options.png _site/assets/options.png 2>/dev/null || cp docs/options.png _site/assets/options.png
+          if [ -f docs/assets/demo.gif ]; then
+            cp docs/assets/demo.gif _site/assets/demo.gif
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

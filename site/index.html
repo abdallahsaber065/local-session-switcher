@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Local Session Switcher — one-click test users on localhost</title>
+    <meta
+      name="description"
+      content="Chrome extension that swaps cookies and storage for named test users on local projects. Nothing leaves your machine."
+    />
+    <link rel="canonical" href="https://abdallahsaber065.github.io/local-session-switcher/" />
+    <link rel="icon" href="./assets/icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header>
+      <div class="wrap nav">
+        <a class="brand" href="./">Local Session Switcher</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="https://github.com/abdallahsaber065/local-session-switcher">GitHub</a>
+          <a href="https://github.com/abdallahsaber065/local-session-switcher/releases/latest">Releases</a>
+          <a href="./privacy/">Privacy</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="wrap">
+      <section class="hero">
+        <p class="kicker">Chrome MV3 extension · MIT</p>
+        <h1>One-click test-user switching for apps on localhost.</h1>
+        <p class="lede">
+          Every local project shares one cookie jar. This extension keeps named users per project
+          (admin, employee, customer) and swaps cookies plus
+          <code>localStorage</code>/<code>sessionStorage</code> in one click. Tabs reload. No
+          sign-out dance. Nothing leaves the machine.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/abdallahsaber065/local-session-switcher/releases/latest"
+            >Download the zip</a
+          >
+          <a class="btn" href="https://github.com/abdallahsaber065/local-session-switcher">View source</a>
+        </div>
+        <p class="note">
+          Chrome Web Store listing is in progress. Until it is live, load the release zip unpacked
+          (Developer mode). Works in Chrome, Brave, and other Chromium browsers.
+        </p>
+      </section>
+
+      <figure>
+        <img
+          class="demo"
+          src="./assets/demo.gif"
+          alt="Popup of Local Session Switcher: clicking Carol Customer reloads the local app as Carol, then clicking Alice Admin restores Alice."
+          width="960"
+          height="540"
+        />
+        <figcaption>Click a user. The tab reloads as that user. Admin → customer → admin.</figcaption>
+      </figure>
+
+      <h2>Install from the release zip</h2>
+      <ol>
+        <li>Download <code>local-session-switcher-*.zip</code> from the latest GitHub Release.</li>
+        <li>Unzip it.</li>
+        <li>Open <code>chrome://extensions</code> → enable Developer mode → <strong>Load unpacked</strong> → pick the unzipped folder.</li>
+      </ol>
+      <p>
+        Then create a project (or import
+        <a href="https://github.com/abdallahsaber065/local-session-switcher/blob/main/skills/session-switcher-seed/assets/example.seed.json"
+          >the example seed</a
+        >), capture a live login, and click a user. A fake login page ships in
+        <code>test-harness/</code> if you want to try it without an app.
+      </p>
+
+      <h2>Why it exists</h2>
+      <p>
+        URL-scoped cookie editors fail locally: every app is <code>localhost</code>, so the URL
+        tells you nothing. Chrome profiles and incognito work for two users and fall apart at five
+        roles across three projects. They also cannot log in or refresh tokens for you.
+      </p>
+
+      <h2>Features</h2>
+      <ul>
+        <li>Project-scoped user lists — you pick the project; it is remembered.</li>
+        <li>One-click swap: cookies + web storage written, leftovers pruned, tabs reloaded. A → B, never through logged-out.</li>
+        <li>Auth recipes with presets for session cookies, NextAuth, Laravel Sanctum, Django, and JWT + refresh.</li>
+        <li>Capture the current tab as a user, or import a JSON seed. An agent skill can author the seed for you.</li>
+        <li>Optional extra local hosts (<code>*.test</code>, <code>*.local</code>, LAN IPs) requested only when you add them.</li>
+        <li>Keyboard <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd>/<kbd>Y</kbd>, toolbar badge, right-click menu, side panel.</li>
+      </ul>
+
+      <div class="shots">
+        <figure>
+          <img src="./assets/popup.png" alt="Extension popup listing Alice, Bob, and Carol with Alice marked active." />
+          <figcaption>Popup — the ledger of test users.</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/options.png" alt="Settings page with project rail, origins, and clearing rules." />
+          <figcaption>Settings — origins, auth recipe, users.</figcaption>
+        </figure>
+      </div>
+
+      <h2>Privacy</h2>
+      <p>
+        No analytics, no accounts, no network calls except the login/refresh URLs you configure on
+        your own origins. Details:
+        <a href="./privacy/">privacy policy</a>.
+      </p>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        MIT ·
+        <a href="https://github.com/abdallahsaber065/local-session-switcher">GitHub</a>
+        ·
+        <a href="./privacy/">Privacy</a>
+        ·
+        <a href="https://github.com/abdallahsaber065/local-session-switcher/blob/main/CHANGELOG.md">Changelog</a>
+      </div>
+    </footer>
+  </body>
+</html>

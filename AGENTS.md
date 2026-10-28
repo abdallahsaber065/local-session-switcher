@@ -22,6 +22,7 @@ own login/refresh endpoints (reuse → refresh → login).
 | `pnpm test` | Vitest unit tests — **all must pass** |
 | `pnpm build` | Production build → `.output/chrome-mv3` |
 | `pnpm zip` | Store zip (used by the Release workflow) |
+| `pnpm store-pack` | Zip + verify a clean Chrome Web Store package |
 | `SEED_FIXTURE_PATH=/abs/path.seed.json pnpm test` | Opt-in external seed regression (skipped when unset) |
 | `node test-harness/server.mjs` | Fake login page + auth API on `localhost:3456` |
 | `node skills/session-switcher-seed/scripts/validate-seed.mjs <file>` | Validate a seed (accepts seed doc or single project) |
@@ -32,7 +33,8 @@ CI (`.github/workflows/ci.yml`) runs compile + test + build on every push/PR.
 ## Architecture
 
 - `entrypoints/background.ts` — orchestration: auth lifecycle, switch execution, badge, menus, keyboard commands, message handlers.
-- `entrypoints/content.ts` — storage read/write/prune + pending injection for `localhost`/`127.0.0.1` pages (`document_start`).
+- `entrypoints/content.ts` — storage read/write/prune + pending injection (`document_start`). Matches `http(s)://*/*`; Chrome only injects where host permission is granted.
+- `lib/hosts.ts` — local-origin allowlist + optional-permission match patterns.
 - `entrypoints/popup|sidepanel|options` — React UI; HTML files carry the design contract comment as the first child of `<body>`.
 - `lib/schema.ts` — Zod schemas for app state, projects, users, seeds (`StateSchema`, `ProjectSchema`, `Seed*`).
 - `lib/planner.ts` — **pure** switch planner (cookies to set/remove, storage applies, reload targets) + `detectActiveUser`.
@@ -47,7 +49,7 @@ CI (`.github/workflows/ci.yml`) runs compile + test + build on every push/PR.
 
 ## Invariants — do not break
 
-1. **Origin guard**: every auth-recipe URL must resolve to one of the project's origins (`assertRecipeOrigins` in `lib/auth/runner.ts`); host permissions cover `localhost`/`127.0.0.1` only (`wxt.config.ts`). Never loosen this — it is the exfiltration defense for seed files.
+1. **Origin guard**: every auth-recipe URL must resolve to one of the project's origins (`assertRecipeOrigins` in `lib/auth/runner.ts`). Default `host_permissions` stay `localhost` / `127.0.0.1` / `[::1]`. Extra hosts are **optional**, requested per origin, and must pass `assertLocalOrigins` in `lib/hosts.ts` (Valet `*.test`, `*.local`, LAN/loopback — never `example.com`). Never request `http://*/*` wholesale and never grant a remote origin — this is the exfiltration defense for seed files.
 2. **Switch order**: write the new session first, prune leftovers second, reload last. Never wipe-first; the session must transition A → B without a logged-out window.
 3. **No network** beyond user-configured recipe URLs. No analytics, no telemetry.
 4. **Seed compatibility**: additive schema changes only, without bumping `schemaVersion`. Breaking seed shape = MAJOR bump + `schemaVersion` bump + migration notes in README and CHANGELOG. Zod strips unknown keys — a field missing from `SeedProjectSchema` is *silently dropped on import* (this bug shipped once; add a test when touching seed schemas).

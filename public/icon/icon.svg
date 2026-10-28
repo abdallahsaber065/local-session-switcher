@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Local Session Switcher">
+  <rect width="128" height="128" rx="28" fill="#10140f"/>
+  <rect x="8" y="8" width="112" height="112" rx="22" fill="none" stroke="#2a3328" stroke-width="4"/>
+  <path d="M36 50h56l-14-14" fill="none" stroke="#55b183" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M92 78H36l14 14" fill="none" stroke="#efebdd" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

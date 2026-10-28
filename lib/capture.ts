@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { UserSchema, type AppState, type CookieSeed, type User } from './schema';
 import type { TabStorageSnapshot } from './msg';
+import { assertHostAccess } from './permissions';
 import { errMsg, colorForTag, hostOf } from './util';
 
 /** Reads the live session of the tab (cookies + storage) and adds it as a user profile. */
@@ -13,6 +14,7 @@ export async function captureUser(
 ): Promise<User> {
   const project = state.projects.find((entry) => entry.id === projectId);
   if (!project) throw new Error('Project not found');
+  await assertHostAccess(project.origins);
 
   const tab = await browser.tabs.get(tabId);
   const url = tab.url ?? '';

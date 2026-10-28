@@ -70,10 +70,46 @@ function validateOrigin(value, path) {
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') err(path, `"${value}" must be http(s)`);
   if (url.origin !== normalized) err(path, `"${value}" must be an origin only — no path (expected "${url.origin}")`);
-  if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
-    err(path, `"${value}" is outside the extension's host permissions (localhost / 127.0.0.1 only)`);
+  if (!isLocalHostname(url.hostname)) {
+    err(
+      path,
+      `"${value}" is not a local origin (localhost, *.localhost, *.local, *.test, *.internal, loopback/LAN IPs). Remote hosts are refused.`,
+    );
+  } else if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1' && url.hostname !== '::1' && url.hostname !== '[::1]') {
+    warn(
+      path,
+      `"${value}" needs an extra host permission — Chrome will prompt on Settings → Save (or the first switch).`,
+    );
   }
   return normalized;
+}
+
+/** Keep in sync with lib/hosts.ts (this validator is zero-dependency). */
+function isLocalHostname(host) {
+  const h = String(host).replace(/^\[|\]$/g, '').toLowerCase();
+  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return true;
+  if (h === 'host.docker.internal' || h === 'host.containers.internal') return true;
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    const inRange = [Number(ipv4[1]), Number(ipv4[2]), Number(ipv4[3]), Number(ipv4[4])].every((n) => n >= 0 && n <= 255);
+    if (!inRange) return false;
+    if (a === 127 || a === 10) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 169 && b === 254) return true;
+    return false;
+  }
+  if (h.includes(':')) {
+    const first = (h.split(':')[0] ?? '').padStart(4, '0');
+    if (h === '::1') return true;
+    if (first.startsWith('fc') || first.startsWith('fd')) return true;
+    return false;
+  }
+  const labels = h.split('.').filter(Boolean);
+  if (labels.length >= 2 && labels.slice(-2).join('.') === 'home.arpa') return true;
+  const tld = labels[labels.length - 1];
+  return labels.length >= 2 && ['localhost', 'local', 'test', 'internal', 'lan', 'home', 'localdomain'].includes(tld);
 }
 
 function validateExtractRule(rule, path) {

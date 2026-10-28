@@ -7,7 +7,9 @@ credentials and session tokens unencrypted in `chrome.storage.local` by design
 (see README — your browser profile already stores the same session). It never
 sends data anywhere except the auth-recipe URLs configured on your own project,
 and those are guarded: every recipe URL must resolve to one of the project's
-origins, and host permissions cover `localhost` / `127.0.0.1` only.
+origins. Default host permissions cover `localhost` / `127.0.0.1` / `[::1]`
+only; extra local hosts (`*.test`, `*.local`, LAN IPs, …) are requested
+per-origin and remote hosts are refused.
 
 ## Reporting a vulnerability
 

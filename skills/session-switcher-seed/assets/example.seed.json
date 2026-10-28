@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "projects": [
+    {
+      "id": "acme-store",
+      "name": "Acme Store",
+      "origins": ["http://localhost:5173", "http://127.0.0.1:8000"],
+      "tags": [
+        { "name": "admin", "color": "#c0413a" },
+        { "name": "employee", "color": "#6e9bea" },
+        { "name": "customer", "color": "#55b183" }
+      ],
+      "auth": {
+        "login": {
+          "method": "POST",
+          "url": "http://localhost:5173/api/auth/login",
+          "bodyType": "json",
+          "headers": { "Content-Type": "application/json" },
+          "body": { "email": "{{username}}", "password": "{{password}}" },
+          "extract": {
+            "accessToken": { "jsonPath": "token" },
+            "refreshToken": { "jsonPath": "refreshToken" }
+          }
+        },
+        "outputs": [
+          { "kind": "localStorage", "key": "auth-token", "value": "{{accessToken}}" }
+        ],
+        "refresh": {
+          "method": "POST",
+          "url": "http://localhost:5173/api/auth/refresh",
+          "bodyType": "json",
+          "headers": { "Content-Type": "application/json" },
+          "body": { "refreshToken": "{{refreshToken}}" },
+          "extract": {
+            "accessToken": { "jsonPath": "token" },
+            "refreshToken": { "jsonPath": "refreshToken" }
+          }
+        },
+        "session": { "ttlMinutes": 15 }
+      },
+      "clear": {
+        "cookies": "all",
+        "localStorage": { "mode": "all", "exclude": ["theme", "locale"] },
+        "sessionStorage": "all"
+      },
+      "reload": "matching-tabs",
+      "users": [
+        {
+          "id": "u-admin",
+          "name": "Alice Admin",
+          "tags": ["admin"],
+          "credentials": {
+            "username": "alice@test.local",
+            "password": "alice"
+          }
+        },
+        {
+          "id": "u-employee",
+          "name": "Bob Employee",
+          "tags": ["employee"],
+          "credentials": {
+            "username": "bob@test.local",
+            "password": "bob"
+          }
+        },
+        {
+          "id": "u-customer",
+          "name": "Carol Customer",
+          "tags": ["customer"],
+          "notes": "No password on file — capture after a real login, or add credentials if the app has a customer account."
+        }
+      ]
+    }
+  ]
+}

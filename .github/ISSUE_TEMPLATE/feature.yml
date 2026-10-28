@@ -1,0 +1,24 @@
+name: Feature request
+description: A capability the extension does not have yet
+title: '[feat] '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      placeholder: What are you doing today that this would replace?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      placeholder: The smallest change that would help.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Auth stack / origins
+      placeholder: e.g. Laravel Herd on myapp.test, NextAuth on localhost:3000

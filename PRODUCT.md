@@ -29,7 +29,8 @@ extension replays and keeps fresh. A generic cookie editor can do neither.
 
 ## Operating Context
 
-Local dev machines (Windows, Brave/Chrome). Projects served on localhost / 127.0.0.1 across varying
+Local dev machines (Windows, Brave/Chrome). Projects served on localhost / 127.0.0.1, plus
+optional extra local hosts (`*.test`, `*.local`, LAN IPs) across varying
 ports, sometimes with multiple origins per project (frontend + API). Auth varies per project:
 session cookies, NextAuth credentials, Laravel Sanctum, Django CSRF, custom JWT + refresh in
 localStorage. The extension is reached from the toolbar popup, a side panel, or the right-click
@@ -44,7 +45,8 @@ JWT expiry display and active-user detection; badge; shortcuts; context menu; si
 Auth recipes run silently on switch (reuse → refresh → login), and a failed login aborts before
 touching the browser session.
 
-Constraints: Chrome MV3; localhost / 127.0.0.1 hosts only; credentials and sessions are stored
+Constraints: Chrome MV3; local origins only (localhost by default; extra local hosts via optional
+permissions); credentials and sessions are stored
 unencrypted in `chrome.storage.local` (explicit user decision, warnings shown); exports strip
 credentials and tokens by default; 2FA / social / OTP logins stay manual via capture; one session
 per browser profile at a time.
@@ -56,9 +58,9 @@ language; no hype.
 
 ## Evidence on Hand
 
-Working v0.1 implementation (popup, sidepanel, options, background, content script), unit tests
-(`tests/`), and a static test harness page (`test-harness/`). No marketing claims, customers,
-benchmarks, or press exist; future work must not invent them.
+Working v1.1.0 implementation (popup, sidepanel, options, background, content script), unit tests
+(`tests/`), a static test harness page (`test-harness/`), and a GitHub Pages homepage. No
+marketing claims, customers, benchmarks, or press exist; future work must not invent them.
 
 ## Product Principles
 

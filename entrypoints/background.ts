@@ -3,6 +3,8 @@ import { captureUser } from '../lib/capture';
 import { browserAuthDeps } from '../lib/auth/browser';
 import { applySinksToUser, runAuth } from '../lib/auth/runner';
 import { executeSwitch, type SwitchReport } from '../lib/executor';
+import { assertLocalOrigins } from '../lib/hosts';
+import { assertHostAccess } from '../lib/permissions';
 import { detectActiveUser } from '../lib/planner';
 import { StateSchema } from '../lib/schema';
 import { loadState, saveState, takePending } from '../lib/storage';
@@ -46,8 +48,11 @@ async function handleMessage(message: BgRequest): Promise<unknown> {
     case 'getState':
       return await loadState();
 
-    case 'saveState':
-      return await saveState(StateSchema.parse(message.state));
+    case 'saveState': {
+      const parsed = StateSchema.parse(message.state);
+      for (const project of parsed.projects) assertLocalOrigins(project.origins);
+      return await saveState(parsed);
+    }
 
     case 'switchUser':
       return await doSwitch(message.projectId, message.userId);
@@ -86,6 +91,7 @@ async function renewSession(projectId: string, userId: string): Promise<AuthTest
   const user = project?.users.find((entry) => entry.id === userId);
   if (!project?.auth) return { ok: false, action: 'none', log: [], error: 'Project has no auth recipe' };
   if (!user) return { ok: false, action: 'none', log: [], error: 'User not found' };
+  await assertHostAccess(project.origins);
 
   const run = await runAuth({
     recipe: project.auth,
@@ -109,6 +115,7 @@ async function runAuthTest(projectId: string, userId: string): Promise<AuthTestR
   const user = project?.users.find((entry) => entry.id === userId);
   if (!project?.auth) return { ok: false, action: 'none', log: [], error: 'Project has no auth recipe' };
   if (!user) return { ok: false, action: 'none', log: [], error: 'User not found' };
+  await assertHostAccess(project.origins);
 
   const run = await runAuth({
     recipe: project.auth,
@@ -126,6 +133,7 @@ async function doSwitch(projectId: string, userId: string, options?: { force?: '
   const project = state.projects.find((entry) => entry.id === projectId);
   const user = project?.users.find((entry) => entry.id === userId);
   if (!project || !user) throw new Error('Project or user not found');
+  await assertHostAccess(project.origins);
 
   let effectiveUser = user;
   let authAction: SwitchReport['authAction'];

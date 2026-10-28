@@ -18,6 +18,7 @@ import {
   type User,
 } from '../../lib/schema';
 import { mergeSeed, stripSecrets, type MergeResult } from '../../lib/seed';
+import { ensureOriginAccess } from '../../lib/permissions';
 import { TAG_COLORS, cx, download, errMsg, fmtAge, readFileText, slugId } from '../../lib/util';
 import { IconDownload, IconPlus, IconRefresh, IconTrash, IconUpload, IconWarn } from '../../components/icons';
 import {
@@ -169,8 +170,12 @@ function OverviewPanel({ project, onChange }: { project: Project; onChange: (pat
             value={originsDraft.value}
             onChange={(event) => originsDraft.onChange(event.target.value)}
             onBlur={originsDraft.onBlur}
-            placeholder="http://localhost:3000"
+            placeholder={'http://localhost:3000\nhttp://myapp.test'}
           />
+          <p className="text-[10px] leading-relaxed text-inkfaint">
+            localhost, 127.0.0.1, [::1], *.test, *.local, *.localhost, *.internal, and LAN/loopback IPs.
+            Extra hosts prompt for access on save — remote origins are refused.
+          </p>
         </Field>
         <Field label="Reload after switching">
           <Select value={project.reload} onChange={(event) => onChange({ reload: event.target.value as Project['reload'] })}>
@@ -777,13 +782,19 @@ export default function App() {
     );
   }
 
+  async function persist(next: AppState, okLines: string[]) {
+    await ensureOriginAccess(next.projects.flatMap((project) => project.origins));
+    const saved = await bg.saveState(StateSchema.parse(next));
+    setState(saved);
+    setDirty(false);
+    setStatus({ kind: 'ok', lines: okLines });
+    return saved;
+  }
+
   async function saveAll() {
     if (!state) return;
     try {
-      const saved = await bg.saveState(StateSchema.parse(state));
-      setState(saved);
-      setDirty(false);
-      setStatus({ kind: 'ok', lines: ['Saved.'] });
+      await persist(state, ['Saved.']);
     } catch (error) {
       setStatus({ kind: 'err', lines: errorLines(error) });
     }
@@ -841,16 +852,10 @@ export default function App() {
     try {
       const seed = SeedSchema.parse(parsed);
       const { state: next, result } = mergeSeed(state, seed);
-      const saved = await bg.saveState(StateSchema.parse(next));
-      setState(saved);
-      setDirty(false);
-      setStatus({
-        kind: 'ok',
-        lines: [
-          `Applied seed from ${source} and saved: ${result.projectsAdded} new / ${result.projectsUpdated} updated projects, ${result.usersAdded} new / ${result.usersUpdated} updated users.`,
-          ...result.errors,
-        ],
-      });
+      await persist(next, [
+        `Applied seed from ${source} and saved: ${result.projectsAdded} new / ${result.projectsUpdated} updated projects, ${result.usersAdded} new / ${result.usersUpdated} updated users.`,
+        ...result.errors,
+      ]);
     } catch (error) {
       setStatus({ kind: 'err', lines: errorLines(error) });
     }
@@ -865,10 +870,7 @@ export default function App() {
         ...state,
         projects: state.projects.map((project) => (project.id === selectedId ? withStableId : project)),
       };
-      const saved = await bg.saveState(StateSchema.parse(draft));
-      setState(saved);
-      setDirty(false);
-      setStatus({ kind: 'ok', lines: ['Project JSON applied and saved.'] });
+      await persist(draft, ['Project JSON applied and saved.']);
     } catch (error) {
       setStatus({ kind: 'err', lines: errorLines(error) });
     }
@@ -879,16 +881,10 @@ export default function App() {
     if (!importPreview || !state) return;
     try {
       const { state: next, result } = mergeSeed(state, importPreview.seed);
-      const saved = await bg.saveState(StateSchema.parse(next));
-      setState(saved);
-      setDirty(false);
-      setStatus({
-        kind: 'ok',
-        lines: [
-          `Imported ${importPreview.name} and saved: ${result.projectsAdded} new / ${result.projectsUpdated} updated projects, ${result.usersAdded} new / ${result.usersUpdated} updated users.`,
-          ...result.errors,
-        ],
-      });
+      await persist(next, [
+        `Imported ${importPreview.name} and saved: ${result.projectsAdded} new / ${result.projectsUpdated} updated projects, ${result.usersAdded} new / ${result.usersUpdated} updated users.`,
+        ...result.errors,
+      ]);
       setImportPreview(null);
     } catch (error) {
       setStatus({ kind: 'err', lines: errorLines(error) });

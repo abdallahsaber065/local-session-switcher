@@ -3,6 +3,7 @@ import { browser } from 'wxt/browser';
 import { userAuthStatus } from '../lib/auth/lifecycle';
 import type { SwitchReport } from '../lib/executor';
 import { bg, type CurrentSession } from '../lib/msg';
+import { ensureOriginAccess } from '../lib/permissions';
 import type { AppState } from '../lib/schema';
 import { cx, errMsg } from '../lib/util';
 import { CaptureForm } from './CaptureForm';
@@ -101,6 +102,7 @@ export function Switcher() {
     setBusy({ id: userId, kind: 'switch' });
     setNotice(null);
     try {
+      await ensureOriginAccess(project.origins);
       const report = await bg.switchUser(project.id, userId);
       reportNotice(report, 'Posted');
       await refresh();
@@ -116,6 +118,7 @@ export function Switcher() {
     setBusy({ id: userId, kind: 'refresh' });
     setNotice(null);
     try {
+      await ensureOriginAccess(project.origins);
       const report = await bg.refreshSession(project.id, userId);
       reportNotice(report, 'Restamped');
       await refresh();
@@ -130,6 +133,7 @@ export function Switcher() {
     if (!project) return;
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab found');
+    await ensureOriginAccess(project.origins);
     await bg.captureCurrent(project.id, tab.id, name, tags);
     setCaptureOpen(false);
     setNotice({ kind: 'ok', text: `Captured "${name}" from the active tab.` });
