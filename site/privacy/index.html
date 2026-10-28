@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy policy — Local Session Switcher</title>
+    <meta
+      name="description"
+      content="Local Session Switcher collects no data. Sessions stay in chrome.storage.local on your machine."
+    />
+    <link rel="canonical" href="https://abdallahsaber065.github.io/local-session-switcher/privacy/" />
+    <link rel="icon" href="../assets/icon.png" />
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header>
+      <div class="wrap nav">
+        <a class="brand" href="../">Local Session Switcher</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="../">Home</a>
+          <a href="https://github.com/abdallahsaber065/local-session-switcher">GitHub</a>
+          <a href="./">Privacy</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="wrap">
+      <p class="kicker">Effective 28 October 2026</p>
+      <h1>Privacy policy</h1>
+      <p class="lede">
+        Local Session Switcher does not collect data. There is no account, no analytics, no
+        telemetry, and no server operated by the developer.
+      </p>
+
+      <h2>What the extension stores</h2>
+      <p>
+        Projects, test-user names, captured cookies, <code>localStorage</code> /
+        <code>sessionStorage</code> snapshots, optional login credentials, and auth-recipe
+        configuration are saved in <code>chrome.storage.local</code> inside your browser profile.
+        That store is not encrypted. Treat it like the rest of your local test setup: use test
+        accounts, not production secrets.
+      </p>
+      <p>
+        You can wipe it from Settings → Wipe all data, or by removing the extension.
+      </p>
+
+      <h2>What it sends</h2>
+      <p>
+        The extension makes no network requests of its own. The only HTTP calls it ever issues are
+        the login, refresh, preflight, and verify URLs <strong>you</strong> configure on an auth
+        recipe, and those URLs must resolve to one of the project's own origins. A seed file cannot
+        point the extension at a third-party host.
+      </p>
+      <p>
+        Optional extra host permissions (for <code>*.test</code>, <code>*.local</code>, LAN IPs, and
+        similar local hosts) are requested only when you add those origins. They are not granted at
+        install time. Remote origins such as <code>example.com</code> are refused.
+      </p>
+
+      <h2>What it does not do</h2>
+      <ul>
+        <li>No advertising, no trackers, no crash pings, no update phone-home beyond Chrome's own store/update checks.</li>
+        <li>No sale or sharing of data — there is nothing to sell.</li>
+        <li>No remote code. Everything runs from the installed package.</li>
+        <li>IndexedDB on your sites is never read or written.</li>
+      </ul>
+
+      <h2>Unpacked / GitHub zip installs</h2>
+      <p>
+        If you load the extension from a GitHub Release zip rather than the Chrome Web Store, the
+        same rules apply. GitHub may log that you downloaded the zip; that is GitHub's privacy
+        policy, not this extension transmitting data.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions or reports:
+        <a href="https://github.com/abdallahsaber065/local-session-switcher/security/advisories/new"
+          >private vulnerability reporting</a
+        >
+        or a
+        <a href="https://github.com/abdallahsaber065/local-session-switcher/issues">GitHub issue</a>
+        for non-security topics. Do not paste live session cookies or passwords into issues.
+      </p>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <a href="../">Home</a>
+        ·
+        <a href="https://github.com/abdallahsaber065/local-session-switcher">GitHub</a>
+      </div>
+    </footer>
+  </body>
+</html>

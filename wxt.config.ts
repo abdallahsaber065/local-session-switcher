@@ -1,12 +1,6 @@
 import { defineConfig } from 'wxt';
 import tailwindcss from '@tailwindcss/vite';
-
-const LOCAL_HOSTS = [
-  'http://localhost/*',
-  'https://localhost/*',
-  'http://127.0.0.1/*',
-  'https://127.0.0.1/*',
-];
+import { DEFAULT_HOST_PERMISSIONS, OPTIONAL_HOST_PERMISSIONS } from './lib/hosts';
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -14,8 +8,10 @@ export default defineConfig({
   manifest: {
     name: 'Local Session Switcher',
     description: 'Swap test-user sessions (cookies + storage) on local projects.',
+    homepage_url: 'https://abdallahsaber065.github.io/local-session-switcher/',
     permissions: ['storage', 'cookies', 'contextMenus', 'sidePanel'],
-    host_permissions: LOCAL_HOSTS,
+    host_permissions: [...DEFAULT_HOST_PERMISSIONS],
+    optional_host_permissions: [...OPTIONAL_HOST_PERMISSIONS],
     commands: {
       'next-user': {
         suggested_key: { default: 'Alt+Shift+U' },

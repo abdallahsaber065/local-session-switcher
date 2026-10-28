@@ -1,13 +1,15 @@
 {
   "name": "session-switcher",
-  "description": "Swap test-user sessions (cookies + storage) on local projects.",
+  "description": "One-click test-user switching for apps on localhost.",
+  "homepage": "https://abdallahsaber065.github.io/local-session-switcher/",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
     "zip": "wxt zip",
+    "store-pack": "wxt zip && node scripts/verify-store-zip.mjs",
     "compile": "wxt prepare && tsc --noEmit",
     "test": "vitest run",
     "postinstall": "wxt prepare"

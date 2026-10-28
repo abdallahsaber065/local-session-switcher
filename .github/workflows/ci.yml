@@ -31,3 +31,9 @@ jobs:
 
       - name: Build extension
         run: pnpm build
+
+      - name: Store-ready zip
+        run: pnpm store-pack
+
+      - name: Validate example seed
+        run: node skills/session-switcher-seed/scripts/validate-seed.mjs skills/session-switcher-seed/assets/example.seed.json

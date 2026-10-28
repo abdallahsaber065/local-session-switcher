@@ -1,11 +1,15 @@
 import { applyStorage, readStorageSnapshot } from '../lib/dom-storage';
+import { CONTENT_SCRIPT_MATCHES } from '../lib/hosts';
 import type { StorageApply } from '../lib/planner';
 import type { BgResponse, TabRequest } from '../lib/msg';
 
 const PENDING_MARKER = '__lss_pending_done';
 
 export default defineContentScript({
-  matches: ['http://localhost/*', 'https://localhost/*', 'http://127.0.0.1/*', 'https://127.0.0.1/*'],
+  // Explicit local patterns (not site-wide). Chrome still only injects where
+  // host permission is granted — localhost by default, extra *.test/*.local/…
+  // after the optional grant.
+  matches: [...CONTENT_SCRIPT_MATCHES],
   runAt: 'document_start',
   allFrames: false,
   main() {

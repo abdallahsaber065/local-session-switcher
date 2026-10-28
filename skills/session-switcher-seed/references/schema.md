@@ -41,8 +41,10 @@ Table of contents:
 }
 ```
 
-Origins that are not `localhost` / `127.0.0.1` need a manifest host-permission change; the
-shipped extension only has those. A trailing slash is tolerated; a path (`/app`) is rejected.
+Origins that are not `localhost` / `127.0.0.1` / `[::1]` are extra local hosts (`*.test`,
+`*.local`, `*.localhost`, LAN IPs, …). The extension prompts for optional host access when
+you save; remote hosts (`example.com`) are refused. A trailing slash is tolerated; a path
+(`/app`) is rejected.
 
 ## 3. Clear rules
 

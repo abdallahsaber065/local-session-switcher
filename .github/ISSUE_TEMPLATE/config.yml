@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security report
+    url: https://github.com/abdallahsaber065/local-session-switcher/security/advisories/new
+    about: Vulnerabilities — use private reporting, not a public issue.
+  - name: Usage question
+    url: https://github.com/abdallahsaber065/local-session-switcher/blob/main/README.md
+    about: Check the README FAQ before opening an issue.

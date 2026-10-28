@@ -35,8 +35,9 @@ validated with the bundled script — and matches the project's real authenticat
 3. **Write the seed** following the schema reference. Constraints that cause imports or runtime to
    fail if violated:
    - Every auth recipe URL (preflight, login, refresh, verify) must live **on one of the project's
-     origins** — the extension refuses anything else (exfiltration guard), and the host permission
-     only covers `localhost` / `127.0.0.1`.
+     origins** — the extension refuses anything else (exfiltration guard). Default host permission
+     covers `localhost` / `127.0.0.1` / `[::1]`; extra local hosts (`*.test`, `*.local`, LAN IPs)
+     need a Chrome permission prompt on save. Remote hosts are refused.
    - Templates use `{{username}}`, `{{password}}`, `{{accessToken}}`, `{{refreshToken}}`, plus
      whatever earlier steps extract (`{{csrfToken}}`, …). An unknown variable aborts the run —
      check every placeholder against the variables actually available at that point.
