@@ -185,7 +185,10 @@ Sessions live in `chrome.storage.local`. See the
 
 Yes, as of 1.1.0. Add the origin and save; Chrome will ask for permission for that
 host. `*.test`, `*.local`, `*.localhost`, `*.internal`, loopback, and RFC1918 LAN
-IPs are allowed. Arbitrary public sites are not.
+IPs are allowed. Arbitrary public sites are not. Cookie swaps work on all of those.
+`localStorage` / `sessionStorage` injection uses a content script that matches the
+local TLDs above (not a site-wide `http://*/*`). On a raw LAN IP, prefer a
+`.test` / `.local` / `.localhost` hostname if you need storage swapped too.
 
 ### Brave? Edge?
 
@@ -203,6 +206,7 @@ supported (different extension APIs).
 
 - One active user per browser profile (Chrome shares cookies across all ports of a host). For two users at once, use a second profile or incognito (allow the extension in incognito).
 - IndexedDB is intentionally never touched.
+- Content scripts are not registered for raw LAN IPs (Chrome has no `192.168.*` match pattern without going site-wide). Cookies still swap there; storage injection needs a matching local TLD.
 - `chrome.storage.local` is not encrypted — don't store production secrets here.
 - Seed/backup files contain live tokens; `*.seed.json` is gitignored.
 - Chrome / Chromium only.
