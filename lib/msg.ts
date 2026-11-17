@@ -35,10 +35,24 @@ export type Err = { ok: false; error: string };
 export type BgResponse<T> = Ok<T> | Err;
 
 async function send<T>(request: BgRequest): Promise<T> {
-  const response = (await browser.runtime.sendMessage(request)) as BgResponse<T> | undefined;
-  if (!response) throw new Error('No response from the extension background');
-  if (!response.ok) throw new Error(response.error);
-  return response.data;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const response = (await Promise.race([
+      browser.runtime.sendMessage(request),
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => resolve(undefined), 5000);
+      }),
+    ])) as BgResponse<T> | undefined;
+    if (!response) {
+      throw new Error(
+        'The background did not respond. In a private window this usually means "Allow in incognito" is off — enable it in chrome://extensions → Details, then reopen the popup.',
+      );
+    }
+    if (!response.ok) throw new Error(response.error);
+    return response.data;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }
 
 export const bg = {

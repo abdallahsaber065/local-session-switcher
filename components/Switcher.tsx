@@ -23,6 +23,26 @@ async function activeWindowId(): Promise<number | undefined> {
   }
 }
 
+async function isIncognitoWindow(): Promise<boolean> {
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    return Boolean(tab?.incognito);
+  } catch {
+    return false;
+  }
+}
+
+/** Legacy API not typed by WXT; used only to explain a private-window setup problem. */
+async function allowedInIncognito(): Promise<boolean | null> {
+  const legacy = (
+    browser as unknown as {
+      extension?: { isAllowedIncognitoAccess?: (callback: (allowed: boolean) => void) => void };
+    }
+  ).extension;
+  if (!legacy?.isAllowedIncognitoAccess) return null;
+  return new Promise((resolve) => legacy.isAllowedIncognitoAccess!((allowed) => resolve(allowed)));
+}
+
 function authPhrase(action: SwitchReport['authAction']): string {
   switch (action) {
     case 'reuse':
@@ -58,12 +78,22 @@ export function Switcher() {
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
+    if ((await isIncognitoWindow()) && (await allowedInIncognito()) === false) {
+      throw new Error('This extension is not allowed in private windows. Enable "Allow in incognito" in chrome://extensions → Details, then reopen the popup.');
+    }
     const next = await bg.getState();
-    const windowId = await activeWindowId();
-    const sessionResult = next.activeProjectId ? await bg.getCurrentSession(next.activeProjectId, windowId) : null;
     setState(next);
-    setSession(sessionResult);
     setReady(true);
+    try {
+      // Detection is cosmetic — never block the whole popup if it fails.
+      const windowId = await activeWindowId();
+      const sessionResult = next.activeProjectId
+        ? await bg.getCurrentSession(next.activeProjectId, windowId)
+        : null;
+      setSession(sessionResult);
+    } catch {
+      // keep the state we already have
+    }
   }, []);
 
   useEffect(() => {
@@ -152,6 +182,20 @@ export function Switcher() {
   }
 
   if (!state) {
+    if (notice?.kind === 'err') {
+      return (
+        <div className="space-y-2 p-3">
+          <div className="text-[12px] text-stamp">Could not start in this window</div>
+          <div className="border border-stamp/50 bg-sheet p-2 text-[11px] leading-relaxed text-inkdim">
+            {notice.text}
+          </div>
+          <div className="text-[10px] leading-relaxed text-inkfaint">
+            For private windows: chrome://extensions → this extension → Details → “Allow in incognito”, then reopen
+            the popup.
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="space-y-2 p-3">
         <Skeleton className="h-4 w-40" />

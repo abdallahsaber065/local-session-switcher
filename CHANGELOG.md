@@ -14,6 +14,12 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and [
   one class never touches the other. Switching inside a private window requires the
   extension's "Allow in incognito" permission.
 
+### Fixed
+
+- The popup no longer stays as an empty skeleton in a private window: background messages
+  time out with an actionable "Allow in incognito" hint, and a failed session-detection
+  lookup can no longer block the rest of the popup from rendering.
+
 ## [1.1.0] — 2026-10-28
 
 Launch-readiness: extra local hosts, store package, public docs site, demo.

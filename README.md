@@ -170,6 +170,11 @@ They work for two users. They get painful at five roles across three projects, a
 they do not log in or refresh tokens for you. This extension keeps one window, one
 tab, and an explicit project.
 
+To switch **inside a private window**, enable **Allow in incognito** for the extension
+in `chrome://extensions → Details` — Chrome does not let any extension run in incognito
+without that user-granted toggle. If it is off, the popup now says so instead of
+appearing empty.
+
 ### Why not a cookie editor?
 
 Cookie editors are URL-scoped. Locally every app is `localhost`, so URL scope is
