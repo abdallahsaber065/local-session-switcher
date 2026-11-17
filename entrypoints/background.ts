@@ -59,18 +59,21 @@ async function handleMessage(
     }
 
     case 'switchUser':
-      return await doSwitch(message.projectId, message.userId, { windowId: message.windowId });
+      return await doSwitch(message.projectId, message.userId, {
+        windowId: message.windowId,
+        storeId: message.storeId,
+      });
 
     case 'captureCurrent': {
       const state = await loadState();
-      const user = await captureUser(state, message.projectId, message.tabId, message.name, message.tags);
+      const user = await captureUser(state, message.projectId, message.tabId, message.name, message.tags, message.storeId);
       await saveState(state);
       await refreshBadge();
       return user;
     }
 
     case 'getCurrentSession':
-      return await getCurrentSession(message.projectId, message.windowId);
+      return await getCurrentSession(message.projectId, message.windowId, message.storeId);
 
     case 'takePendingInjection': {
       // Only the same context (normal ↔ private) may consume a queued session.
@@ -85,7 +88,11 @@ async function handleMessage(
       return await renewSession(message.projectId, message.userId);
 
     case 'refreshSession':
-      return await doSwitch(message.projectId, message.userId, { force: 'refresh', windowId: message.windowId });
+      return await doSwitch(message.projectId, message.userId, {
+        force: 'refresh',
+        windowId: message.windowId,
+        storeId: message.storeId,
+      });
   }
 }
 
@@ -96,7 +103,7 @@ type ResolvedScope = { windowId: number; incognito: boolean; storeId?: string };
  * it. Normal and private windows map to different stores, which is what keeps
  * them fully isolated from each other.
  */
-async function resolveScope(windowId?: number): Promise<ResolvedScope> {
+async function resolveScope(windowId?: number, storeId?: string): Promise<ResolvedScope> {
   let id: number | undefined;
   let incognito = false;
   try {
@@ -111,13 +118,24 @@ async function resolveScope(windowId?: number): Promise<ResolvedScope> {
   if (id == null) throw new Error('Target window is gone — try the switch again.');
   if (!incognito) return { windowId: id, incognito: false };
 
-  // The bundled CookieStore type omits `incognito` though the API returns it.
-  const stores = (await browser.cookies.getAllCookieStores()) as { id?: string; incognito?: boolean }[];
-  const storeId = stores.find((store) => store.incognito)?.id;
-  if (!storeId) {
-    throw new Error('Switching inside a private window needs "Allow in incognito" for this extension.');
+  // Prefer the id resolved in the popup itself (its own private context); the
+  // service worker cannot always enumerate the private store (Brave).
+  let resolved = storeId;
+  let stores: { id?: string; incognito?: boolean; current?: boolean }[] = [];
+  if (!resolved) {
+    // No popup-provided id (e.g. a keyboard shortcut): enumerate, and if the
+    // incognito flag is missing, the non-current store is the private one here.
+    stores = (await browser.cookies.getAllCookieStores()) as unknown as typeof stores;
+    resolved =
+      stores.find((store) => store.incognito)?.id ??
+      (stores.length > 1 ? stores.find((store) => !store.current)?.id : undefined);
   }
-  return { windowId: id, incognito, storeId };
+  if (!resolved) {
+    throw new Error(
+      `Could not find the private cookie store (stores seen: ${JSON.stringify(stores)}). Check "Allow in incognito" and reopen the popup.`,
+    );
+  }
+  return { windowId: id, incognito, storeId: resolved };
 }
 
 /** Renews and caches tokens without touching the browser session (used from Settings). */
@@ -167,7 +185,7 @@ async function runAuthTest(projectId: string, userId: string): Promise<AuthTestR
 async function doSwitch(
   projectId: string,
   userId: string,
-  options?: { force?: 'login' | 'refresh'; windowId?: number },
+  options?: { force?: 'login' | 'refresh'; windowId?: number; storeId?: string },
 ): Promise<SwitchReport> {
   const state = await loadState();
   const project = state.projects.find((entry) => entry.id === projectId);
@@ -176,7 +194,7 @@ async function doSwitch(
   await assertHostAccess(project.origins);
 
   // Scope first: fail fast (e.g. private window without permission) before any login runs.
-  const scope = await resolveScope(options?.windowId);
+  const scope = await resolveScope(options?.windowId, options?.storeId);
 
   let effectiveUser = user;
   let authAction: SwitchReport['authAction'];
@@ -212,12 +230,12 @@ async function doSwitch(
   return report;
 }
 
-async function getCurrentSession(projectId: string, windowId?: number): Promise<CurrentSession> {
+async function getCurrentSession(projectId: string, windowId?: number, storeId?: string): Promise<CurrentSession> {
   const state = await loadState();
   const project = state.projects.find((entry) => entry.id === projectId);
   if (!project) return { cookies: [], userId: null };
 
-  const scope = await resolveScope(windowId);
+  const scope = await resolveScope(windowId, storeId);
   const storeFilter = scope.storeId ? { storeId: scope.storeId } : {};
   const cookies: CurrentSession['cookies'] = [];
   for (const origin of [...new Set(project.origins)]) {

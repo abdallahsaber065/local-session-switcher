@@ -11,6 +11,7 @@ export async function captureUser(
   tabId: number,
   name: string,
   tags: string[],
+  storeId?: string,
 ): Promise<User> {
   const project = state.projects.find((entry) => entry.id === projectId);
   if (!project) throw new Error('Project not found');
@@ -29,13 +30,12 @@ export async function captureUser(
   }
 
   const host = hostOf(origin);
-  let storeId: string | undefined;
-  if (tab.incognito) {
-    // The bundled CookieStore type omits `incognito` though the API returns it.
-    const stores = (await browser.cookies.getAllCookieStores()) as { id?: string; incognito?: boolean }[];
-    storeId = stores.find((store) => store.incognito)?.id;
+  let resolvedStoreId = storeId;
+  if (tab.incognito && !resolvedStoreId) {
+    const stores = (await browser.cookies.getAllCookieStores()) as unknown as { id?: string; incognito?: boolean }[];
+    resolvedStoreId = stores.find((store) => store.incognito)?.id;
   }
-  const rawCookies = await browser.cookies.getAll({ domain: host, ...(storeId ? { storeId } : {}) });
+  const rawCookies = await browser.cookies.getAll({ domain: host, ...(resolvedStoreId ? { storeId: resolvedStoreId } : {}) });
   const cookies: CookieSeed[] = rawCookies.map((cookie) => ({
     name: cookie.name,
     value: cookie.value,

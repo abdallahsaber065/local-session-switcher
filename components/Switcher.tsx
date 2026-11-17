@@ -43,6 +43,29 @@ async function allowedInIncognito(): Promise<boolean | null> {
   return new Promise((resolve) => legacy.isAllowedIncognitoAccess!((allowed) => resolve(allowed)));
 }
 
+/**
+ * Resolve the cookie store from THIS extension context. A private popup sees its
+ * own private store; the background service worker sometimes cannot enumerate it
+ * (notably in Brave), so pass the id along with every window-scoped message.
+ */
+async function currentStoreId(): Promise<string | undefined> {
+  if (!(await isIncognitoWindow())) return undefined; // normal path uses the default store
+  try {
+    const stores = (await browser.cookies.getAllCookieStores()) as unknown as {
+      id?: string;
+      incognito?: boolean;
+      current?: boolean;
+    }[];
+    return (
+      stores.find((store) => store.incognito)?.id ??
+      stores.find((store) => store.current)?.id ??
+      stores[0]?.id
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 function authPhrase(action: SwitchReport['authAction']): string {
   switch (action) {
     case 'reuse':
@@ -87,8 +110,9 @@ export function Switcher() {
     try {
       // Detection is cosmetic — never block the whole popup if it fails.
       const windowId = await activeWindowId();
+      const storeId = await currentStoreId();
       const sessionResult = next.activeProjectId
-        ? await bg.getCurrentSession(next.activeProjectId, windowId)
+        ? await bg.getCurrentSession(next.activeProjectId, windowId, storeId)
         : null;
       setSession(sessionResult);
     } catch {
@@ -121,7 +145,9 @@ export function Switcher() {
     try {
       const saved = await bg.saveState({ ...state, activeProjectId: id || null });
       setState(saved);
-      setSession(id ? await bg.getCurrentSession(id, await activeWindowId()) : null);
+      setSession(
+        id ? await bg.getCurrentSession(id, await activeWindowId(), await currentStoreId()) : null,
+      );
       setFilterTag(null);
       setQuery('');
     } catch (error) {
@@ -144,7 +170,7 @@ export function Switcher() {
     setNotice(null);
     try {
       await ensureOriginAccess(project.origins);
-      const report = await bg.switchUser(project.id, userId, await activeWindowId());
+      const report = await bg.switchUser(project.id, userId, await activeWindowId(), await currentStoreId());
       reportNotice(report, 'Posted');
       await refresh();
     } catch (error) {
@@ -160,7 +186,7 @@ export function Switcher() {
     setNotice(null);
     try {
       await ensureOriginAccess(project.origins);
-      const report = await bg.refreshSession(project.id, userId, await activeWindowId());
+      const report = await bg.refreshSession(project.id, userId, await activeWindowId(), await currentStoreId());
       reportNotice(report, 'Restamped');
       await refresh();
     } catch (error) {
@@ -175,7 +201,7 @@ export function Switcher() {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab found');
     await ensureOriginAccess(project.origins);
-    await bg.captureCurrent(project.id, tab.id, name, tags);
+    await bg.captureCurrent(project.id, tab.id, name, tags, await currentStoreId());
     setCaptureOpen(false);
     setNotice({ kind: 'ok', text: `Captured "${name}" from the active tab.` });
     await refresh();

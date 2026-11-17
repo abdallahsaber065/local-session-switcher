@@ -19,6 +19,10 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and [
 - The popup no longer stays as an empty skeleton in a private window: background messages
   time out with an actionable "Allow in incognito" hint, and a failed session-detection
   lookup can no longer block the rest of the popup from rendering.
+- Private switching resolves the cookie-store id inside the private window itself (the
+  service worker cannot always enumerate Brave's private store) and passes it through
+  capture, session detection, and switching; store discovery also falls back to the
+  `current` / non-current store flags.
 
 ## [1.1.0] — 2026-10-28
 

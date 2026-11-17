@@ -17,13 +17,13 @@ export type CurrentSession = {
 export type BgRequest =
   | { type: 'getState' }
   | { type: 'saveState'; state: AppState }
-  | { type: 'switchUser'; projectId: string; userId: string; windowId?: number }
-  | { type: 'captureCurrent'; projectId: string; tabId: number; name: string; tags: string[] }
-  | { type: 'getCurrentSession'; projectId: string; windowId?: number }
+  | { type: 'switchUser'; projectId: string; userId: string; windowId?: number; storeId?: string }
+  | { type: 'captureCurrent'; projectId: string; tabId: number; name: string; tags: string[]; storeId?: string }
+  | { type: 'getCurrentSession'; projectId: string; windowId?: number; storeId?: string }
   | { type: 'takePendingInjection'; origin: string }
   | { type: 'runAuthTest'; projectId: string; userId: string }
   | { type: 'renewSession'; projectId: string; userId: string }
-  | { type: 'refreshSession'; projectId: string; userId: string; windowId?: number };
+  | { type: 'refreshSession'; projectId: string; userId: string; windowId?: number; storeId?: string };
 
 export type AuthTestResult = { ok: boolean; action: string; log: string[]; error?: string };
 
@@ -58,15 +58,32 @@ async function send<T>(request: BgRequest): Promise<T> {
 export const bg = {
   getState: () => send<AppState>({ type: 'getState' }),
   saveState: (state: AppState) => send<AppState>({ type: 'saveState', state }),
-  switchUser: (projectId: string, userId: string, windowId?: number) =>
-    send<SwitchReport>({ type: 'switchUser', projectId, userId, ...(windowId != null ? { windowId } : {}) }),
-  captureCurrent: (projectId: string, tabId: number, name: string, tags: string[]) =>
-    send<User>({ type: 'captureCurrent', projectId, tabId, name, tags }),
-  getCurrentSession: (projectId: string, windowId?: number) =>
-    send<CurrentSession>({ type: 'getCurrentSession', projectId, ...(windowId != null ? { windowId } : {}) }),
+  switchUser: (projectId: string, userId: string, windowId?: number, storeId?: string) =>
+    send<SwitchReport>({
+      type: 'switchUser',
+      projectId,
+      userId,
+      ...(windowId != null ? { windowId } : {}),
+      ...(storeId ? { storeId } : {}),
+    }),
+  captureCurrent: (projectId: string, tabId: number, name: string, tags: string[], storeId?: string) =>
+    send<User>({ type: 'captureCurrent', projectId, tabId, name, tags, ...(storeId ? { storeId } : {}) }),
+  getCurrentSession: (projectId: string, windowId?: number, storeId?: string) =>
+    send<CurrentSession>({
+      type: 'getCurrentSession',
+      projectId,
+      ...(windowId != null ? { windowId } : {}),
+      ...(storeId ? { storeId } : {}),
+    }),
   takePendingInjection: (origin: string) => send<{ apply: StorageApply | null }>({ type: 'takePendingInjection', origin }),
   runAuthTest: (projectId: string, userId: string) => send<AuthTestResult>({ type: 'runAuthTest', projectId, userId }),
   renewSession: (projectId: string, userId: string) => send<AuthTestResult>({ type: 'renewSession', projectId, userId }),
-  refreshSession: (projectId: string, userId: string, windowId?: number) =>
-    send<SwitchReport>({ type: 'refreshSession', projectId, userId, ...(windowId != null ? { windowId } : {}) }),
+  refreshSession: (projectId: string, userId: string, windowId?: number, storeId?: string) =>
+    send<SwitchReport>({
+      type: 'refreshSession',
+      projectId,
+      userId,
+      ...(windowId != null ? { windowId } : {}),
+      ...(storeId ? { storeId } : {}),
+    }),
 };
