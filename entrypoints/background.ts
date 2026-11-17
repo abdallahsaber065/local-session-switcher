@@ -6,6 +6,7 @@ import { executeSwitch, type SwitchReport } from '../lib/executor';
 import { assertLocalOrigins } from '../lib/hosts';
 import { assertHostAccess } from '../lib/permissions';
 import { detectActiveUser } from '../lib/planner';
+import { activeUserFor, withActiveUser, type SessionScope } from '../lib/session-scope';
 import { StateSchema } from '../lib/schema';
 import { loadState, saveState, takePending } from '../lib/storage';
 import type { AuthTestResult, BgRequest, BgResponse, CurrentSession } from '../lib/msg';
@@ -38,6 +39,17 @@ export default defineBackground(() => {
   browser.contextMenus.onClicked.addListener((info) => {
     // Bundled OnClickData lacks tabId in its type; the runtime always provides it.
     void handleMenu(String(info.menuItemId), info as unknown as { tabId?: number });
+  });
+
+  // Newly focused/created tabs need their context-specific badge override.
+  browser.tabs.onActivated.addListener(() => {
+    void refreshBadge();
+  });
+  browser.tabs.onCreated.addListener(() => {
+    void refreshBadge();
+  });
+  browser.windows.onFocusChanged.addListener(() => {
+    void refreshBadge();
   });
 
   void rebuildMenus();
@@ -224,8 +236,8 @@ async function doSwitch(
 
   user.lastUsedAt = new Date().toISOString();
   state.activeProjectId = projectId;
-  state.activeUserByProject[projectId] = userId;
-  await saveState(state);
+  const nextState = withActiveUser(state, projectId, userId, scope.incognito ? 'private' : 'normal');
+  await saveState(nextState);
   await refreshBadge();
   return report;
 }
@@ -259,15 +271,14 @@ async function handleCommand(command: string): Promise<void> {
   const project = state.projects.find((entry) => entry.id === state.activeProjectId);
   if (!project || project.users.length === 0) return;
 
-  const currentId = state.activeUserByProject[project.id];
+  // Shortcuts are global: target the focused window and its own context.
+  const focused = await browser.windows.getLastFocused();
+  const scope: SessionScope = focused.incognito ? 'private' : 'normal';
+  const currentId = activeUserFor(state, project.id, scope);
   const index = project.users.findIndex((entry) => entry.id === currentId);
   const nextIndex = index < 0 ? 0 : (index + direction + project.users.length) % project.users.length;
   const next = project.users[nextIndex];
-  if (next) {
-    // Shortcuts are global: they target whichever window is focused when pressed.
-    const focused = await browser.windows.getLastFocused();
-    await doSwitch(project.id, next.id, { windowId: focused.id });
-  }
+  if (next) await doSwitch(project.id, next.id, { windowId: focused.id });
 }
 
 async function handleMenu(menuItemId: string, info: { tabId?: number }): Promise<void> {
@@ -298,7 +309,8 @@ async function rebuildMenus(): Promise<void> {
     const project = state.projects.find((entry) => entry.id === state.activeProjectId);
     if (!project || project.users.length === 0) return;
 
-    const activeId = state.activeUserByProject[project.id];
+    const focused = await browser.windows.getLastFocused();
+    const activeId = activeUserFor(state, project.id, focused.incognito ? 'private' : 'normal');
     browser.contextMenus.create({
       id: 'lss-root',
       title: `Session Switcher: ${project.name}`,
@@ -321,15 +333,34 @@ async function refreshBadge(): Promise<void> {
   try {
     const state = await loadState();
     const project = state.projects.find((entry) => entry.id === state.activeProjectId);
-    const user = project ? project.users.find((entry) => entry.id === state.activeUserByProject[project.id]) : undefined;
 
-    await browser.action.setBadgeText({ text: user ? initials(user.name) : '' });
-    await browser.action.setBadgeBackgroundColor({ color: user ? '#2f7d5a' : '#3a4038' });
-    await browser.action.setTitle({
-      title: project
-        ? `Session Switcher — ${project.name}${user ? ` • ${user.name}` : ''}`
-        : 'Session Switcher — no project selected',
-    });
+    const forScope = (scope: SessionScope) => {
+      const id = activeUserFor(state, project?.id, scope);
+      const user = project?.users.find((entry) => entry.id === id);
+      return {
+        text: user ? initials(user.name) : '',
+        color: user ? '#2f7d5a' : '#3a4038',
+        title: project
+          ? `${scope === 'private' ? 'Private · ' : ''}Session Switcher — ${project.name}${user ? ` • ${user.name}` : ''}`
+          : 'Session Switcher — no project selected',
+      };
+    };
+
+    // Global badge covers normal windows (and any tab without an override).
+    const normal = forScope('normal');
+    await browser.action.setBadgeText({ text: normal.text });
+    await browser.action.setBadgeBackgroundColor({ color: normal.color });
+    await browser.action.setTitle({ title: normal.title });
+
+    // Per-tab overrides: private tabs show the private context's active user.
+    // Setting every tab explicitly avoids depending on override-clearing semantics.
+    for (const tab of await browser.tabs.query({})) {
+      if (tab.id == null) continue;
+      const scoped = forScope(tab.incognito ? 'private' : 'normal');
+      await browser.action.setBadgeText({ text: scoped.text, tabId: tab.id });
+      await browser.action.setBadgeBackgroundColor({ color: scoped.color, tabId: tab.id });
+      await browser.action.setTitle({ title: scoped.title, tabId: tab.id });
+    }
   } catch {
     // badge is best-effort
   }

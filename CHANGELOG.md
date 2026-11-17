@@ -13,6 +13,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and [
   cookie stores end to end (read, write, remove, capture, pending injection), so a switch in
   one class never touches the other. Switching inside a private window requires the
   extension's "Allow in incognito" permission.
+- **Per-window badge**: the toolbar initials now follow the active user of each window
+  context — private tabs show the private session's user, normal windows the normal one.
 
 ### Fixed
 

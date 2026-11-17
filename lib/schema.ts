@@ -103,10 +103,18 @@ export const ProjectSchema = z.object({
   users: z.array(UserSchema).default([]),
 });
 
+export const ActiveUserScopeSchema = z.object({
+  normal: z.record(z.string(), z.string()).default({}),
+  private: z.record(z.string(), z.string()).default({}),
+});
+
 export const StateSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   activeProjectId: z.string().nullable().default(null),
+  /** Legacy/global map, kept in sync for normal windows and older readers. */
   activeUserByProject: z.record(z.string(), z.string()).default({}),
+  /** Additive: the active user is tracked separately for normal and private contexts. */
+  activeUserByScope: ActiveUserScopeSchema.default({ normal: {}, private: {} }),
   projects: z.array(ProjectSchema).default([]),
 });
 

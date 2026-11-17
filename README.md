@@ -32,7 +32,7 @@ it is remembered.
 - **One-click session swap** — cookies + `localStorage`/`sessionStorage` written, stale auth pruned, tabs reloaded. The session goes A → B, never through a logged-out wipe.
 - **Auth recipes** — reuse → refresh → login with CSRF preflights. A failed login aborts before touching the browser.
 - **Capture or seed** — grab a live session, or import a JSON seed (standalone validator included). An [agent skill](skills/session-switcher-seed/SKILL.md) can author the seed from your auth code.
-- **Test-user awareness** — role tags, JWT expiry countdown, active-user detection, toolbar badge with initials.
+- **Test-user awareness** — role tags, JWT expiry countdown, active-user detection, and a toolbar badge per window context: private and normal windows show their own active user.
 - **Keyboard-first** — <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> / <kbd>Y</kbd> to cycle users, right-click menu, side panel.
 - **Extra local hosts** — `*.test`, `*.local`, `*.localhost`, `*.internal`, and LAN/loopback IPs, requested only when you add them. Remote hosts are refused.
 - **Window-scoped switching** — a switch (storage injection + reload) hits only the window you triggered it from: popup, side panel, right-click menu, or keyboard shortcut.
