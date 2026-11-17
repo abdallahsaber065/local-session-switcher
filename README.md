@@ -63,6 +63,8 @@ Starting points in Settings → Auth — edit URLs and field names to match the 
 2. Unzip it.
 3. Open `chrome://extensions` → enable **Developer mode** → **Load unpacked** → pick the unzipped folder.
 
+Current release: **[v1.2.0](https://github.com/abdallahsaber065/local-session-switcher/releases/tag/v1.2.0)** · [release notes](docs/release-notes/1.2.0.md).
+
 ### Chrome Web Store
 
 Store listing is in progress. This section will get the install link when review completes.
