@@ -38,7 +38,7 @@ CI (`.github/workflows/ci.yml`) runs compile + test + build on every push/PR.
 - `entrypoints/popup|sidepanel|options` — React UI; HTML files carry the design contract comment as the first child of `<body>`.
 - `lib/schema.ts` — Zod schemas for app state, projects, users, seeds (`StateSchema`, `ProjectSchema`, `Seed*`).
 - `lib/planner.ts` — **pure** switch planner (cookies to set/remove, storage applies, reload targets) + `detectActiveUser`.
-- `lib/executor.ts` — Chrome-API execution of a plan; enforces **set-new → prune-old → reload**.
+- `lib/executor.ts` — Chrome-API execution of a plan; enforces **set-new → prune-old → reload** within the triggering window's tab set and cookie store (`SwitchScope`: normal ↔ private stores).
 - `lib/auth/` — recipe system: `schema` (Zod), `template` (`{{var}}` interpolation), `extract` (jsonPath/regex/header/cookie), `lifecycle` (reuse/refresh/login decision), `runner` (execute + origin guard), `presets` (5 stacks), `browser` (SW deps).
 - `lib/seed.ts` — seed merge (projects by id/name, users by id/name) + `stripSecrets` for exports.
 - `components/` — shared UI: `Switcher`, `ui` primitives, hand-authored `icons` (SVG only).

@@ -16,14 +16,27 @@ export type SwitchReport = {
   authLog?: string[];
 };
 
-export async function executeSwitch(project: Project, user: User): Promise<SwitchReport> {
+/**
+ * Where a switch is allowed to land: the window that triggered it, and its
+ * cookie store. Normal and private windows use different stores, so a switch
+ * in one class can never leak into the other.
+ */
+export type SwitchScope = {
+  windowId: number;
+  incognito: boolean;
+  /** Set only for private windows (the private cookie store id). */
+  storeId?: string;
+};
+
+export async function executeSwitch(project: Project, user: User, scope: SwitchScope): Promise<SwitchReport> {
   const origins = [...new Set(project.origins)];
   const hosts = [...new Set(origins.map(hostOf))];
+  const storeFilter = scope.storeId ? { storeId: scope.storeId } : {};
 
   const cookiesByHost: Record<string, ExistingCookie[]> = {};
   for (const host of hosts) {
     try {
-      const cookies = await browser.cookies.getAll({ domain: host });
+      const cookies = await browser.cookies.getAll({ domain: host, ...storeFilter });
       cookiesByHost[host] = cookies.map((cookie) => ({ name: cookie.name, path: cookie.path }));
     } catch (error) {
       cookiesByHost[host] = [];
@@ -32,7 +45,9 @@ export async function executeSwitch(project: Project, user: User): Promise<Switc
   }
 
   const allTabs = await browser.tabs.query({});
-  const tabs: TabLike[] = allTabs.map((tab) => ({ id: tab.id, url: tab.url, active: tab.active }));
+  const tabs: TabLike[] = allTabs
+    .filter((tab) => tab.windowId === scope.windowId)
+    .map((tab) => ({ id: tab.id, url: tab.url, active: tab.active }));
   const plan = planSwitch({ project, user, tabs, cookiesByHost });
 
   const report: SwitchReport = {
@@ -57,6 +72,7 @@ export async function executeSwitch(project: Project, user: User): Promise<Switc
           sameSite: cookie.sameSite,
           ...(cookie.expirationDate ? { expirationDate: cookie.expirationDate } : {}),
           ...(cookie.domain && !cookie.hostOnly ? { domain: cookie.domain } : {}),
+          ...(scope.storeId ? { storeId: scope.storeId } : {}),
         });
         report.cookiesSet++;
       } catch (error) {
@@ -65,7 +81,11 @@ export async function executeSwitch(project: Project, user: User): Promise<Switc
     }
     for (const cookie of op.remove) {
       try {
-        await browser.cookies.remove({ url: op.origin + (cookie.path || '/'), name: cookie.name });
+        await browser.cookies.remove({
+          url: op.origin + (cookie.path || '/'),
+          name: cookie.name,
+          ...(scope.storeId ? { storeId: scope.storeId } : {}),
+        });
         report.cookiesRemoved++;
       } catch (error) {
         report.failures.push(`remove cookie ${cookie.name} @ ${op.origin}: ${errMsg(error)}`);
@@ -86,7 +106,11 @@ export async function executeSwitch(project: Project, user: User): Promise<Switc
 
   const allPending = [...plan.pending, ...pendingFallback];
   if (allPending.length > 0) {
-    await setPending(allPending, project.id, user.id);
+    await setPending(
+      allPending.map((entry) => ({ origin: entry.origin, apply: entry.apply, incognito: scope.incognito })),
+      project.id,
+      user.id,
+    );
     report.pendingOrigins = [...new Set(allPending.map((entry) => entry.origin))];
   }
 

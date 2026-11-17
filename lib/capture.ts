@@ -29,7 +29,13 @@ export async function captureUser(
   }
 
   const host = hostOf(origin);
-  const rawCookies = await browser.cookies.getAll({ domain: host });
+  let storeId: string | undefined;
+  if (tab.incognito) {
+    // The bundled CookieStore type omits `incognito` though the API returns it.
+    const stores = (await browser.cookies.getAllCookieStores()) as { id?: string; incognito?: boolean }[];
+    storeId = stores.find((store) => store.incognito)?.id;
+  }
+  const rawCookies = await browser.cookies.getAll({ domain: host, ...(storeId ? { storeId } : {}) });
   const cookies: CookieSeed[] = rawCookies.map((cookie) => ({
     name: cookie.name,
     value: cookie.value,

@@ -3,7 +3,7 @@
   "description": "One-click test-user switching for apps on localhost.",
   "homepage": "https://abdallahsaber065.github.io/local-session-switcher/",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",

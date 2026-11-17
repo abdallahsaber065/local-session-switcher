@@ -13,6 +13,16 @@ import { Banner, Button, Chip, EmptyState, IconButton, Input, Skeleton } from '.
 
 type Notice = { kind: 'ok' | 'err'; text: string };
 
+/** The window hosting this popup/side panel — everything stays scoped to it. */
+async function activeWindowId(): Promise<number | undefined> {
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    return tab?.windowId;
+  } catch {
+    return undefined;
+  }
+}
+
 function authPhrase(action: SwitchReport['authAction']): string {
   switch (action) {
     case 'reuse':
@@ -49,7 +59,8 @@ export function Switcher() {
 
   const refresh = useCallback(async () => {
     const next = await bg.getState();
-    const sessionResult = next.activeProjectId ? await bg.getCurrentSession(next.activeProjectId) : null;
+    const windowId = await activeWindowId();
+    const sessionResult = next.activeProjectId ? await bg.getCurrentSession(next.activeProjectId, windowId) : null;
     setState(next);
     setSession(sessionResult);
     setReady(true);
@@ -80,7 +91,7 @@ export function Switcher() {
     try {
       const saved = await bg.saveState({ ...state, activeProjectId: id || null });
       setState(saved);
-      setSession(id ? await bg.getCurrentSession(id) : null);
+      setSession(id ? await bg.getCurrentSession(id, await activeWindowId()) : null);
       setFilterTag(null);
       setQuery('');
     } catch (error) {
@@ -103,7 +114,7 @@ export function Switcher() {
     setNotice(null);
     try {
       await ensureOriginAccess(project.origins);
-      const report = await bg.switchUser(project.id, userId);
+      const report = await bg.switchUser(project.id, userId, await activeWindowId());
       reportNotice(report, 'Posted');
       await refresh();
     } catch (error) {
@@ -119,7 +130,7 @@ export function Switcher() {
     setNotice(null);
     try {
       await ensureOriginAccess(project.origins);
-      const report = await bg.refreshSession(project.id, userId);
+      const report = await bg.refreshSession(project.id, userId, await activeWindowId());
       reportNotice(report, 'Restamped');
       await refresh();
     } catch (error) {

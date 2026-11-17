@@ -35,6 +35,8 @@ it is remembered.
 - **Test-user awareness** — role tags, JWT expiry countdown, active-user detection, toolbar badge with initials.
 - **Keyboard-first** — <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> / <kbd>Y</kbd> to cycle users, right-click menu, side panel.
 - **Extra local hosts** — `*.test`, `*.local`, `*.localhost`, `*.internal`, and LAN/loopback IPs, requested only when you add them. Remote hosts are refused.
+- **Window-scoped switching** — a switch (storage injection + reload) hits only the window you triggered it from: popup, side panel, right-click menu, or keyboard shortcut.
+- **Private-window isolation** — normal and private windows use separate cookie stores end to end (switch, capture, detection), so a switch in one never touches the other, in either direction.
 - **Local-only** — no analytics, no servers. Recipe URLs are origin-guarded to the project's own origins.
 
 Works in **Chrome**, **Brave**, and other Chromium browsers.
@@ -204,7 +206,7 @@ supported (different extension APIs).
 
 ## Limitations
 
-- One active user per browser profile (Chrome shares cookies across all ports of a host). For two users at once, use a second profile or incognito (allow the extension in incognito).
+- One active user per browser *class*: all normal windows share one cookie jar (storage and reloads stay window-scoped, but cookies change for every normal window). For two users at once, use a second profile or a private window — private switching requires the extension's *Allow in incognito* permission.
 - IndexedDB is intentionally never touched.
 - Content scripts are not registered for raw LAN IPs (Chrome has no `192.168.*` match pattern without going site-wide). Cookies still swap there; storage injection needs a matching local TLD.
 - `chrome.storage.local` is not encrypted — don't store production secrets here.

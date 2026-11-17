@@ -4,6 +4,16 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and [
 
 ## [Unreleased]
 
+### Added
+
+- **Window-scoped switching**: a switch now applies only to the window that triggered it
+  (popup, side panel, context menu, and keyboard shortcuts each resolve their own window) —
+  storage injection and reloads no longer reach into other windows.
+- **Private-window isolation in both directions**: normal and private windows use their own
+  cookie stores end to end (read, write, remove, capture, pending injection), so a switch in
+  one class never touches the other. Switching inside a private window requires the
+  extension's "Allow in incognito" permission.
+
 ## [1.1.0] — 2026-10-28
 
 Launch-readiness: extra local hosts, store package, public docs site, demo.

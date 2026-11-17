@@ -11,6 +11,8 @@ export type PendingInjection = {
   projectId: string;
   userId: string;
   at: string;
+  /** Private windows have their own jar — a pending session must land only in the matching context. */
+  incognito: boolean;
 };
 
 export type PendingMap = Record<string, PendingInjection>;
@@ -32,7 +34,7 @@ async function loadPendingMap(): Promise<PendingMap> {
 }
 
 export async function setPending(
-  records: { origin: string; apply: StorageApply }[],
+  records: { origin: string; apply: StorageApply; incognito: boolean }[],
   projectId: string,
   userId: string,
 ): Promise<void> {
@@ -43,10 +45,11 @@ export async function setPending(
   await browser.storage.local.set({ [PENDING_KEY]: map });
 }
 
-export async function takePending(origin: string): Promise<PendingInjection | null> {
+/** Serves the queued session only to the requesting tab's own context (normal ↔ private). */
+export async function takePending(origin: string, incognito: boolean): Promise<PendingInjection | null> {
   const map = await loadPendingMap();
   const record = map[origin];
-  if (!record) return null;
+  if (!record || record.incognito !== incognito) return null;
   delete map[origin];
   await browser.storage.local.set({ [PENDING_KEY]: map });
   return record;

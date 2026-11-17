@@ -24,8 +24,8 @@ export default defineBackground(() => {
     }
   });
 
-  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    handleMessage(message as BgRequest)
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    handleMessage(message as BgRequest, sender)
       .then((data) => sendResponse({ ok: true, data } satisfies BgResponse<unknown>))
       .catch((error) => sendResponse({ ok: false, error: errMsg(error) } satisfies BgResponse<unknown>));
     return true;
@@ -36,14 +36,18 @@ export default defineBackground(() => {
   });
 
   browser.contextMenus.onClicked.addListener((info) => {
-    void handleMenu(String(info.menuItemId));
+    // Bundled OnClickData lacks tabId in its type; the runtime always provides it.
+    void handleMenu(String(info.menuItemId), info as unknown as { tabId?: number });
   });
 
   void rebuildMenus();
   void refreshBadge();
 });
 
-async function handleMessage(message: BgRequest): Promise<unknown> {
+async function handleMessage(
+  message: BgRequest,
+  sender: { tab?: { incognito?: boolean } },
+): Promise<unknown> {
   switch (message.type) {
     case 'getState':
       return await loadState();
@@ -55,7 +59,7 @@ async function handleMessage(message: BgRequest): Promise<unknown> {
     }
 
     case 'switchUser':
-      return await doSwitch(message.projectId, message.userId);
+      return await doSwitch(message.projectId, message.userId, { windowId: message.windowId });
 
     case 'captureCurrent': {
       const state = await loadState();
@@ -66,10 +70,11 @@ async function handleMessage(message: BgRequest): Promise<unknown> {
     }
 
     case 'getCurrentSession':
-      return await getCurrentSession(message.projectId);
+      return await getCurrentSession(message.projectId, message.windowId);
 
     case 'takePendingInjection': {
-      const record = await takePending(message.origin);
+      // Only the same context (normal ↔ private) may consume a queued session.
+      const record = await takePending(message.origin, sender.tab?.incognito ?? false);
       return { apply: record?.apply ?? null };
     }
 
@@ -80,8 +85,39 @@ async function handleMessage(message: BgRequest): Promise<unknown> {
       return await renewSession(message.projectId, message.userId);
 
     case 'refreshSession':
-      return await doSwitch(message.projectId, message.userId, { force: 'refresh' });
+      return await doSwitch(message.projectId, message.userId, { force: 'refresh', windowId: message.windowId });
   }
+}
+
+type ResolvedScope = { windowId: number; incognito: boolean; storeId?: string };
+
+/**
+ * Resolves which window a switch may touch and which cookie store belongs to
+ * it. Normal and private windows map to different stores, which is what keeps
+ * them fully isolated from each other.
+ */
+async function resolveScope(windowId?: number): Promise<ResolvedScope> {
+  let id: number | undefined;
+  let incognito = false;
+  try {
+    const win = windowId != null ? await browser.windows.get(windowId) : await browser.windows.getLastFocused();
+    id = win.id;
+    incognito = Boolean(win.incognito);
+  } catch {
+    const win = await browser.windows.getLastFocused();
+    id = win.id;
+    incognito = Boolean(win.incognito);
+  }
+  if (id == null) throw new Error('Target window is gone — try the switch again.');
+  if (!incognito) return { windowId: id, incognito: false };
+
+  // The bundled CookieStore type omits `incognito` though the API returns it.
+  const stores = (await browser.cookies.getAllCookieStores()) as { id?: string; incognito?: boolean }[];
+  const storeId = stores.find((store) => store.incognito)?.id;
+  if (!storeId) {
+    throw new Error('Switching inside a private window needs "Allow in incognito" for this extension.');
+  }
+  return { windowId: id, incognito, storeId };
 }
 
 /** Renews and caches tokens without touching the browser session (used from Settings). */
@@ -128,12 +164,19 @@ async function runAuthTest(projectId: string, userId: string): Promise<AuthTestR
   return { ok: run.ok, action: run.action, log: run.log, ...(run.error ? { error: run.error } : {}) };
 }
 
-async function doSwitch(projectId: string, userId: string, options?: { force?: 'login' | 'refresh' }): Promise<SwitchReport> {
+async function doSwitch(
+  projectId: string,
+  userId: string,
+  options?: { force?: 'login' | 'refresh'; windowId?: number },
+): Promise<SwitchReport> {
   const state = await loadState();
   const project = state.projects.find((entry) => entry.id === projectId);
   const user = project?.users.find((entry) => entry.id === userId);
   if (!project || !user) throw new Error('Project or user not found');
   await assertHostAccess(project.origins);
+
+  // Scope first: fail fast (e.g. private window without permission) before any login runs.
+  const scope = await resolveScope(options?.windowId);
 
   let effectiveUser = user;
   let authAction: SwitchReport['authAction'];
@@ -157,7 +200,7 @@ async function doSwitch(projectId: string, userId: string, options?: { force?: '
     effectiveUser = applySinksToUser(user, run.sinks);
   }
 
-  const report = await executeSwitch(project, effectiveUser);
+  const report = await executeSwitch(project, effectiveUser, scope);
   report.authAction = authAction;
   report.authLog = authLog;
 
@@ -169,16 +212,18 @@ async function doSwitch(projectId: string, userId: string, options?: { force?: '
   return report;
 }
 
-async function getCurrentSession(projectId: string): Promise<CurrentSession> {
+async function getCurrentSession(projectId: string, windowId?: number): Promise<CurrentSession> {
   const state = await loadState();
   const project = state.projects.find((entry) => entry.id === projectId);
   if (!project) return { cookies: [], userId: null };
 
+  const scope = await resolveScope(windowId);
+  const storeFilter = scope.storeId ? { storeId: scope.storeId } : {};
   const cookies: CurrentSession['cookies'] = [];
   for (const origin of [...new Set(project.origins)]) {
     const host = hostOf(origin);
     try {
-      for (const cookie of await browser.cookies.getAll({ domain: host })) {
+      for (const cookie of await browser.cookies.getAll({ domain: host, ...storeFilter })) {
         cookies.push({ host, name: cookie.name, value: cookie.value });
       }
     } catch {
@@ -200,15 +245,29 @@ async function handleCommand(command: string): Promise<void> {
   const index = project.users.findIndex((entry) => entry.id === currentId);
   const nextIndex = index < 0 ? 0 : (index + direction + project.users.length) % project.users.length;
   const next = project.users[nextIndex];
-  if (next) await doSwitch(project.id, next.id);
+  if (next) {
+    // Shortcuts are global: they target whichever window is focused when pressed.
+    const focused = await browser.windows.getLastFocused();
+    await doSwitch(project.id, next.id, { windowId: focused.id });
+  }
 }
 
-async function handleMenu(menuItemId: string): Promise<void> {
+async function handleMenu(menuItemId: string, info: { tabId?: number }): Promise<void> {
   if (!menuItemId.startsWith('u:')) return;
   const state = await loadState();
   if (!state.activeProjectId) return;
+
+  // Right-click knows its tab → scope to that tab's window.
+  let windowId: number | undefined;
+  if (info.tabId != null) {
+    try {
+      windowId = (await browser.tabs.get(info.tabId)).windowId;
+    } catch {
+      // tab closed before the switch ran
+    }
+  }
   try {
-    await doSwitch(state.activeProjectId, menuItemId.slice(2));
+    await doSwitch(state.activeProjectId, menuItemId.slice(2), { windowId });
   } catch (error) {
     console.warn('Session Switcher: context menu switch failed', errMsg(error));
   }
